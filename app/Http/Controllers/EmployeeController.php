@@ -3,19 +3,21 @@
 namespace App\Http\Controllers;
 
 use PDF;
+use File;
 
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use App\Exports\EmployeeExport;
 use App\Imports\EmployeeImport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Storage;
 
 class EmployeeController extends Controller
 {
     public function index(Request $request)
     {
         if ($request->has('search')) {
-            $data = Employee::where('nama','LIKE','%' .$request->search.'%')->paginate(5);
+            $data = Employee::where('nama', 'LIKE', '%' . $request->search . '%')->paginate(5);
         } else {
             $data = Employee::paginate(5);
         }
@@ -30,12 +32,12 @@ class EmployeeController extends Controller
     public function insertpegawai(Request $request)
     {
         // dd($request->all());
-       $data = Employee::create($request->all());
-       if($request->hasFile('foto')){
-           $request->file('foto')->move('fotopegawai/', $request->file('foto')->getClientOriginalName());
-           $data->foto = $request->file('foto')->getClientOriginalName();
-           $data->save();
-       }
+        $data = Employee::create($request->all());
+        if ($request->hasFile('foto')) {
+            $request->file('foto')->move('fotopegawai/', $request->file('foto')->getClientOriginalName());
+            $data->foto = $request->file('foto')->getClientOriginalName();
+            $data->save();
+        }
         return redirect()
             ->route('pegawai')
             ->with('success', 'data berhasil ditambahkan');
@@ -51,7 +53,15 @@ class EmployeeController extends Controller
     public function updatedatapegawai(Request $request, $id)
     {
         $data = Employee::find($id);
-        $data->update($request->all());
+        if ($request->hasFile('foto')) {
+            File::delete('fotopegawai/' . $data->foto);
+            $data->delete();
+            $request->file('foto')->move('fotopegawai/', $request->file('foto')->getClientOriginalName());
+            $data->foto = $request->file('foto')->getClientOriginalName();
+            $data->save();
+        } else {
+            $data->update($request->all());
+        }    
         return redirect()
             ->route('pegawai')
             ->with('success', 'data berhasil diupdate');
@@ -60,11 +70,21 @@ class EmployeeController extends Controller
     public function deletedatapegawai($id)
     {
         $data = Employee::find($id);
+        File::delete('fotopegawai/'. $data->foto);
         $data->delete();
         return redirect()
             ->route('pegawai')
             ->with('success', 'data berhasil dihapus');
     }
+
+    // $data = Employee::find($request->id);
+    // \Storage::delete('public/fotopegawai' . $data->foto);
+    // Employee::where("id", $data->id)->delete();
+
+    // // return back()->with("success", "Image deleted successfully.");
+    // return redirect()
+    //     ->route('pegawai')
+    //     ->with('success', 'data berhasil dihapus');
 
     public function exportpdf()
     {
